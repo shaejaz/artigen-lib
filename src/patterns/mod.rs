@@ -5,3 +5,4 @@ pub trait Pattern {
 }
 
 pub mod julia;
+pub mod blocks;
