@@ -3,10 +3,11 @@ use std::num::ParseIntError;
 use image::{ImageBuffer, Rgb};
 use imageproc::{drawing::{draw_antialiased_line_segment_mut, draw_filled_rect_mut, draw_hollow_rect_mut}, pixelops::interpolate, rect::Rect};
 use rand::{Rng, rngs::ThreadRng, seq::SliceRandom};
+use serde::{Serialize, Deserialize};
 
 use super::Pattern;
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct BlocksConfig {
     pub x: u32,
     pub y: u32,
