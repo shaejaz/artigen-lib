@@ -1,3 +1,5 @@
+use std::num::ParseIntError;
+
 use image::{ImageBuffer, Rgb};
 use imageproc::{drawing::{draw_antialiased_line_segment_mut, draw_filled_rect_mut, draw_hollow_rect_mut}, pixelops::interpolate, rect::Rect};
 use rand::{Rng, rngs::ThreadRng, seq::SliceRandom};
@@ -8,6 +10,13 @@ use super::Pattern;
 pub struct BlocksConfig {
     pub x: u32,
     pub y: u32,
+    pub color1: String,
+    pub color2: String,
+    pub color3: String,
+    pub bg_color: String,
+    pub block_size: u8,
+    pub line_size: u8,
+    pub density: f64,
 }
 
 #[derive(Debug)]
@@ -120,6 +129,38 @@ impl Blocks {
             None => return -1,
         }
     }
+
+    fn get_scaled_size(&self, factor: f64) -> (u32, u32) {
+        let imgx = self.config.x;
+        let imgy = self.config.y;
+
+        let base =  (imgx + imgy) as f64 * factor;
+        let scale_lower = base * 0.01;
+        let scale_upper = base * 0.03;
+
+        (scale_lower as u32, scale_upper as u32)
+    }
+
+    fn get_color_rgbs(&self) -> ([Rgb<u8>; 3], Rgb<u8>) {
+        let color1 = self.decode_hex(&self.config.color1);
+        let color2 = self.decode_hex(&self.config.color2);
+        let color3 = self.decode_hex(&self.config.color3);
+        let bg_color = self.decode_hex(&self.config.bg_color);
+
+        ([color1, color2, color3], bg_color)
+    }
+
+    fn decode_hex(&self, s: &str) -> Rgb<u8> {
+        let color: Result<Vec<u8>, ParseIntError> = (0..s.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i+2], 16))
+            .collect();
+
+        match color {
+            Ok(v) => return Rgb([v[0], v[1], v[2]]),
+            Err(_) => return Rgb([0, 0, 0])
+        }
+    }
 }
 
 impl Pattern for Blocks {
@@ -129,13 +170,16 @@ impl Pattern for Blocks {
         let imgx = self.config.x;
         let imgy = self.config.y;
 
+        let (colors, bg_color) = self.get_color_rgbs();
+
         let quads = self.generate_quadrants();
 
-        let mut imgbuf = ImageBuffer::from_pixel(imgx, imgy, image::Rgb([255, 255, 255]));
+        let mut imgbuf = ImageBuffer::from_pixel(imgx, imgy, bg_color);
 
         let mut x: i32 = imgx as i32 / 2;
         let mut y: i32 = imgy as i32 / 2;
-        let step = 60.0;
+        let (step_lower, step_upper) = self.get_scaled_size(self.config.line_size as f64);
+        let step = rng.gen_range(step_lower..step_upper) as f64;
         let angle = 90.0;
 
         let mut axiom = String::from("+FA+");
@@ -145,8 +189,10 @@ impl Pattern for Blocks {
         let mut current_angle: f64 = 0.0;
         let mut saved_state: Vec<(i32, i32, f64)> = vec![];
 
+        let (rule_lower, rule_upper) = self.get_scaled_size(self.config.density);
+
         for _i in 0..num_loops {
-            let rule = self.generate_rule(15, 26, true, &mut rng);
+            let rule = self.generate_rule(rule_lower, rule_upper, true, &mut rng);
             rules.push([String::from("F"), rule]);
             axiom = self.generate_lindenmayer(axiom, &rules);
         }
@@ -160,8 +206,14 @@ impl Pattern for Blocks {
                     
                     draw_antialiased_line_segment_mut(&mut imgbuf, (x, y), (x1, y1), Rgb([0, 0, 0]), interpolate);
 
-                    let rect = Rect::at(x as i32, y as i32).of_size(50, 60);
-                    draw_filled_rect_mut(&mut imgbuf, rect, Rgb([255, 128, 60]));
+                    let color = match colors.choose(&mut rng) {
+                        Some(r) => r,
+                        None => &Rgb([255, 128, 30]),
+                    };
+                    
+                    let (lower, upper) = self.get_scaled_size(self.config.block_size as f64);
+                    let rect = Rect::at(x as i32, y as i32).of_size(rng.gen_range(lower..upper), rng.gen_range(lower..upper));
+                    draw_filled_rect_mut(&mut imgbuf, rect, *color);
                     draw_hollow_rect_mut(&mut imgbuf, rect, Rgb([0, 0, 0]));
 
                     x = x1;
