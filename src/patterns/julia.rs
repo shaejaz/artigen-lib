@@ -3,10 +3,12 @@ use std::{vec, num::ParseIntError};
 use image::{ImageBuffer, Rgb};
 use num_complex::Complex;
 use rand::{Rng, rngs::ThreadRng, seq::SliceRandom};
+use serde::{Serialize, Deserialize};
 
 use super::Pattern;
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct JuliaConfig {
     pub x: u32,
     pub y: u32,
