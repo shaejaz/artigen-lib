@@ -191,9 +191,6 @@ impl Pattern for Julia {
             } else {
                 *pixel = colors[2];
             }
-
-            // let Rgb(data) = *pixel;
-            // *pixel = Rgb([data[0], i as u8, data[2]]);
         }
     
         imgbuf
